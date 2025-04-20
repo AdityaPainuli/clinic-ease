@@ -1,17 +1,4 @@
-/* Full page background with image */
-body {
-    margin: 0;
-    padding: 0;
-    background: url('https://img.freepik.com/free-photo/view-luxurious-hotel-interior-space_23-2150683477.jpghttps://img.freepik.com/free-photo/dumbells-still-life-studio_23-2151747216.jpg?t=st=1744482148~exp=1744485748~hmac=ccefe616bde05d6cc0fc20e16597d9971d2fa592cef3b013d411f56bf6f4329a&w=1800') no-repeat center center fixed;
-    background-size: cover;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    font-family: sans-serif;
-  }
-  
-  /* Form container with off-white background */
+    /* Form container with off-white background */
   .ibw-container {
     background: #f9f9f9; /* off-white */
     padding: 30px;
