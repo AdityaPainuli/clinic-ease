@@ -4,6 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
+const appointmentRoutes = require('./routes/appointment')
 
 const app = express();
 
@@ -13,9 +14,10 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/appointments', appointmentRoutes);
+
 
 app.get("/health", (req, res) => {
-    console.log("hello world")
     res.json({"status":"healthy!"})
 } )
 

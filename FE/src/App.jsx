@@ -4,6 +4,8 @@ import './style.css'
 import { User } from "lucide-react";
 import { Navigate } from 'react-router-dom';
 import Login from "./Login";
+import axios from "axios";
+
 
 
 
@@ -19,7 +21,8 @@ export default function App() {
         {/* </ProtectedRoute> */}
           {/* <ProtectedRoute> */}
             <Route path="appointments" element={<ClinicAppointment />} />
-         {/* </ProtectedRoute> */}
+          {/* </ProtectedRoute> */}
+          <Route path = "/aboutus" element={<AboutUs/>} />
           <Route path="/login" element={<Login />} />
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -176,63 +179,94 @@ function Home() {
 function ClinicAppointment() {
   const [selectedDay, setSelectedDay] = useState("today");
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [availability, setAvailability] = useState({});
+  const [message, setMessage] = useState("");
 
-  // Generate time slots
-  const generateTimeSlots = (startHour, endHour) => {
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      const res = await axios.get('http://localhost:8080/api/appointments/availability');
+      setAvailability(res.data);
+    };
+    fetchAvailability();
+  }, [selectedDay]);
+
+  const getDayKey = () => {
+    const today = new Date();
+    const date = new Date(today);
+    if (selectedDay === "tomorrow") date.setDate(today.getDate() + 1);
+    return date.toISOString().split("T")[0];
+  };
+
+  const formatTime = (timeDecimal) => {
+    const hours = Math.floor(timeDecimal);
+    const minutes = Math.round((timeDecimal - hours) * 60);
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
+    const formattedMinutes = minutes.toString().padStart(2, "0");
+
+    return `${formattedHours}:${formattedMinutes} ${ampm}`;
+  };
+
+  const generateTimeSlots = (startHour, endHour, period) => {
     const slots = [];
-    let currentHour = startHour;
+    const today = new Date();
+    const target = new Date(today);
+    if (selectedDay === 'tomorrow') target.setDate(today.getDate() + 1);
+    const dateKey = target.toISOString().split('T')[0];
 
-    while (currentHour < endHour) {
-      const slotStart = currentHour;
-      const slotEnd = currentHour + 0.75; // 45 minutes later
-
-      // Format times for display
-      const startTime = formatTime(slotStart);
-      const endTime = formatTime(slotEnd);
+    for (let hour = startHour; hour < endHour; hour += 1) {
+      const slotDecimal = hour;
+      const timeRange = `${formatTime(slotDecimal)} - ${formatTime(slotDecimal + 0.75)}`;
+      const slotId = `${period}-${slotDecimal}`;
+      const seatStatus = availability[dateKey]?.[slotId] || [true, true];
 
       slots.push({
-        id: `${slotStart}`,
-        time: `${startTime} - ${endTime}`,
+        id: slotId,
+        time: timeRange,
         seats: [
-          { id: 1, available: Math.random() > 0.3 }, 
-          { id: 2, available: Math.random() > 0.3 }  
+          { id: 1, available: seatStatus[0] },
+          { id: 2, available: seatStatus[1] }
         ]
       });
-
-      currentHour = slotEnd + 0.25; 
     }
 
     return slots;
   };
 
 
-  const formatTime = (timeDecimal) => {
-    const hours = Math.floor(timeDecimal);
-    const minutes = Math.round((timeDecimal - hours) * 60);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
-    const formattedMinutes = minutes.toString().padStart(2, '0');
 
-    return `${formattedHours}:${formattedMinutes} ${ampm}`;
-  };
-
-  const morningSlots = generateTimeSlots(9, 12);
-  const eveningSlots = generateTimeSlots(17, 20);
+  const morningSlots = generateTimeSlots(9, 12, "morning");
+  const eveningSlots = generateTimeSlots(17, 20, "evening");
 
   const handleSelectSlot = (slotId, seatId) => {
-    setSelectedSlot({
-      slotId,
-      seatId
-    });
+    setSelectedSlot({ slotId, seatId });
   };
 
-  const getDayText = () => {
-    if (selectedDay === "today") {
-      return "Today";
-    } else {
-      return "Tomorrow";
+  const getDayText = () => (selectedDay === "today" ? "Today" : "Tomorrow");
+
+  const confirmBooking = async () => {
+    if (!selectedSlot) return;
+    const name = prompt("Please enter your name");
+
+    const today = new Date();
+    const dateObj = new Date(today);
+    if (selectedDay === "tomorrow") dateObj.setDate(today.getDate() + 1);
+    const formattedDate = selectedDay;
+
+    try {
+      const res = await axios.post('http://localhost:8080/api/appointments', {
+        date: formattedDate,
+        slot: selectedSlot.slotId,
+        seat: selectedSlot.seatId,
+        name
+      });
+      setMessage("✅ Appointment booked successfully!");
+    } catch (err) {
+      setMessage(err.response?.data?.error || "❌ Booking failed.");
     }
   };
+
+
 
   return (
     <div className="appointment-page">
@@ -263,68 +297,43 @@ function ClinicAppointment() {
       </div>
 
       {/* Morning Slots */}
-      <div className="slot-section">
-        <h3 className="slot-heading">Morning Slots ({getDayText()})</h3>
-        <div className="slots-grid">
-          {morningSlots.map(slot => (
-            <div key={slot.id} className="time-slot">
-              <div className="slot-time">{slot.time}</div>
-              <div className="seat-container">
-                {slot.seats.map(seat => (
-                  <button
-                    key={`morning-${slot.id}-${seat.id}`}
-                    className={`seat-button ${seat.available ? "available" : "unavailable"}`}
-                    disabled={!seat.available}
-                    onClick={() => handleSelectSlot(`morning-${slot.id}`, seat.id)}
-                  >
-                    Seat {seat.id}
-                  </button>
-                ))}
+      {[
+        { label: "Morning", slots: morningSlots },
+        { label: "Evening", slots: eveningSlots }
+      ].map(({ label, slots }) => (
+        <div className="slot-section" key={label}>
+          <h3 className="slot-heading">{label} Slots ({getDayText()})</h3>
+          <div className="slots-grid">
+            {slots.map((slot) => (
+              <div key={slot.id} className="time-slot">
+                <div className="slot-time">{slot.time}</div>
+                <div className="seat-container">
+                  {slot.seats.map((seat) => (
+                    <button
+                      key={`${slot.id}-${seat.id}`}
+                      className={`seat-button ${seat.available ? "available" : "unavailable"}`}
+                      disabled={!seat.available}
+                      onClick={() => handleSelectSlot(slot.id, seat.id)}
+                    >
+                      Seat {seat.id}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <p className="slot-info">(Max 4 slots)</p>
-      </div>
+      ))}
 
-      {/* Evening Slots */}
-      <div className="slot-section">
-        <h3 className="slot-heading">Evening Slots ({getDayText()})</h3>
-        <div className="slots-grid">
-          {eveningSlots.map(slot => (
-            <div key={slot.id} className="time-slot">
-              <div className="slot-time">{slot.time}</div>
-              <div className="seat-container">
-                {slot.seats.map(seat => (
-                  <button
-                    key={`evening-${slot.id}-${seat.id}`}
-                    className={`seat-button ${seat.available ? "available" : "unavailable"}`}
-                    disabled={!seat.available}
-                    onClick={() => handleSelectSlot(`evening-${slot.id}`, seat.id)}
-                  >
-                    Seat {seat.id}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="slot-info">(Max 4 slots)</p>
-      </div>
-
-      {/* Selected Slot Summary */}
+      {/* Confirmation */}
       {selectedSlot && (
         <div className="selected-slot">
           <h3>Selected Appointment</h3>
           <p>Slot: {selectedSlot.slotId}, Seat: {selectedSlot.seatId}</p>
-          <div>
-            <button
-              className="confirm-button"
-              onClick={() => alert("Booking confirmed!")}
-            >
-              Confirm Booking
-            </button>
-          </div>
+          <button className="confirm-button" onClick={confirmBooking}>
+            Confirm Booking
+          </button>
+          {message && <p className="booking-message">{message}</p>}
         </div>
       )}
 
@@ -535,3 +544,52 @@ function ProtectedRoute({ children }) {
 
   return children;
 }
+
+
+
+const AboutUs = () => {
+  return (
+    <div className="about-container">
+      <header className="about-header">
+        <h1>About Clinic Ease</h1>
+        <p>Your trusted healthcare partner</p>
+      </header>
+
+      <main className="about-content">
+        <section className="about-section">
+          <h2>Our Story</h2>
+          <p>
+            Clinic Ease has been providing exceptional healthcare
+            services to our community. We started with a single clinic and have
+            grown to become a network of healthcare professionals dedicated to
+            your wellbeing.
+          </p>
+        </section>
+
+        <section className="about-section">
+          <h2>Our Mission</h2>
+          <p>
+            To provide accessible, affordable, and high-quality healthcare
+            services to all our patients. We believe in treating the whole person,
+            not just the symptoms.
+          </p>
+        </section>
+
+        <section className="about-section">
+          <h2>Our Team</h2>
+          <p>
+            Our team consists of board-certified physicians, experienced nurses,
+            and compassionate support staff who work together to ensure you receive
+            the best possible care.
+          </p>
+        </section>
+
+        <div className="back-home">
+          <Link to="/" className="home-link">
+            ← Back to Home
+          </Link>
+        </div>
+      </main>
+    </div>
+  );
+};
