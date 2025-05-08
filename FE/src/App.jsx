@@ -44,11 +44,16 @@ export default function App() {
   );
 }
 
-
-// Layout Component with Navigation
 function Layout() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -62,10 +67,17 @@ function Layout() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [dropdownRef]);
+  }, []);
 
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
+    setIsDropdownOpen(false);
+    navigate("/login");
   };
 
   return (
@@ -88,15 +100,31 @@ function Layout() {
 
                   {isDropdownOpen && (
                     <div className="dropdown-menu">
-                      <Link to="/" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                        Login / signup
-                      </Link>
-                      <Link to="/bmi" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                        BMI
-                      </Link>
-                      <Link to="/aboutus" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
-                        About us
-                      </Link>
+                      {isLoggedIn ? (
+                        <>
+                          <Link to="/appointments" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                            Appointments
+                          </Link>
+                          <Link to="/bmi" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                            BMI
+                          </Link>
+                          <Link to="/aboutus" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                            About Us
+                          </Link>
+                          <Link  className="dropdown-item" onClick={() => handleLogout()}>
+                            Logout
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <Link to="/login" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                            Login / Signup
+                          </Link>
+                          <Link to="/aboutus" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                            About Us
+                          </Link>
+                        </>
+                      )}
                     </div>
                   )}
                 </li>
@@ -134,10 +162,12 @@ function Layout() {
           <p>© {new Date().getFullYear()} Clinic Ease. All rights reserved.</p>
         </div>
       </footer>
-
     </div>
   );
 }
+
+
+
 
 // Home Page Component
 function Home() {
