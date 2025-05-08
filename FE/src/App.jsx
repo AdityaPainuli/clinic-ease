@@ -16,13 +16,26 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
-          {/* <ProtectedRoute> */}
-            <Route path="/bmi" element={<BMICalculator />} />
-        {/* </ProtectedRoute> */}
-          {/* <ProtectedRoute> */}
-            <Route path="appointments" element={<ClinicAppointment />} />
-          {/* </ProtectedRoute> */}
-          <Route path = "/aboutus" element={<AboutUs/>} />
+
+          <Route
+            path="/bmi"
+            element={
+              <ProtectedRoute>
+                <BMICalculator />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute>
+                <ClinicAppointment />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/aboutus" element={<AboutUs />} />
           <Route path="/login" element={<Login />} />
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -30,6 +43,7 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
 
 // Layout Component with Navigation
 function Layout() {
@@ -80,7 +94,7 @@ function Layout() {
                       <Link to="/bmi" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
                         BMI
                       </Link>
-                      <Link to="/appointments" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
+                      <Link to="/aboutus" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
                         About us
                       </Link>
                     </div>
@@ -535,11 +549,13 @@ const BMICalculator = () => {
 
 
 
+
+
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
 
   if (!token) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
